@@ -1,0 +1,51 @@
+#include <WiFi.h>
+
+const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";
+
+const int relayPin = 2; // GPIO pin connected to the relay control pin
+
+WiFiServer server(80);
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(relayPin, OUTPUT);
+
+  // Connect to Wi-Fi network
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+
+  server.begin();
+}
+
+void loop() {
+  WiFiClient client = server.available(); // Check for incoming clients
+
+  if (client) { // If a new client connects
+    Serial.println("New Client.");
+    String request = client.readStringUntil('\r'); // Read the first line of the request
+    client.flush();
+
+    if (request.indexOf("/on") != -1) { // If the request contains "/on"
+      digitalWrite(relayPin, HIGH); // Turn on the relay
+    } else if (request.indexOf("/off") != -1) { // If the request contains "/off"
+      digitalWrite(relayPin, LOW); // Turn off the relay
+    }
+
+    // Send a response to the client
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println();
+    client.println("<!DOCTYPE HTML>");
+    client.println("<html>");
+    client.println("<head></head><body>");
+    client.println("Relay state: " + String(digitalRead(relayPin) == HIGH ? "ON" : "OFF"));
+    client.println("<br><a href='/on'>Turn On</a> | <a href='/off'>Turn Off</a>");
+    client.println("</body></html>");
+    delay(1);
+  }
+}
